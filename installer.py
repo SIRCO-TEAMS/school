@@ -49,6 +49,26 @@ def add_to_startup():
     except Exception:
         pass  # Optionally log or show error
 
+def add_desktop_shortcut():
+    if os.name == "nt":
+        try:
+            import winshell
+            from win32com.client import Dispatch
+            desktop = winshell.desktop()
+            shortcut = os.path.join(desktop, "KeySecureApp.lnk")
+            target = sys.executable
+            script = os.path.join(INSTALL_DIR, "keysecure.py")
+            shell = Dispatch('WScript.Shell')
+            shortcut_obj = shell.CreateShortCut(shortcut)
+            shortcut_obj.Targetpath = target
+            shortcut_obj.Arguments = f'"{script}"'
+            shortcut_obj.WorkingDirectory = INSTALL_DIR
+            shortcut_obj.save()
+            # Set file as read-only to discourage deletion/moving
+            os.chmod(shortcut, 0o444)
+        except Exception:
+            pass  # Optionally log or show error
+
 def add_to_windows_defender():
     if os.name == "nt":
         script_path = os.path.join(INSTALL_DIR, "keysecure.py")
@@ -100,11 +120,12 @@ def main():
         sys.exit(0)
     copy_app()
     add_to_startup()
+    add_desktop_shortcut()
     add_to_windows_defender()
     setup_server_settings()
     messagebox.showinfo(
         "Installed",
-        "KeySecure app installed, configured, and added to startup.\n\n"
+        "KeySecure app installed, configured, and added to startup and desktop.\n\n"
         "If you use other antivirus/malware software, please manually add the following folder to exclusions:\n"
         f"{INSTALL_DIR}\n\n"
         "The app will now open."
