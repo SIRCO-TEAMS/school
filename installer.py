@@ -108,6 +108,20 @@ def run_app():
     else:
         subprocess.Popen([sys.executable, script])
 
+def run_app_in_background():
+    # On Windows, run the app minimized to system tray (if possible) after install
+    try:
+        import subprocess
+        # Start the app with pythonw (no console window)
+        script = os.path.join(INSTALL_DIR, "keysecure.py")
+        pythonw = sys.executable.replace("python.exe", "pythonw.exe")
+        if os.name == "nt" and os.path.exists(pythonw):
+            subprocess.Popen([pythonw, script], cwd=INSTALL_DIR)
+        else:
+            subprocess.Popen([sys.executable, script], cwd=INSTALL_DIR)
+    except Exception:
+        pass
+
 def main():
     request_admin_privileges()
     root = tk.Tk()
@@ -128,9 +142,9 @@ def main():
         "KeySecure app installed, configured, and added to startup and desktop.\n\n"
         "If you use other antivirus/malware software, please manually add the following folder to exclusions:\n"
         f"{INSTALL_DIR}\n\n"
-        "The app will now open."
+        "The app will now run in the background (system tray)."
     )
-    run_app()
+    run_app_in_background()
     sys.exit(0)
 
 if __name__ == "__main__":
