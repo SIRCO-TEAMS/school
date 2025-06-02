@@ -9,9 +9,14 @@ from Crypto.Cipher import AES
 import base64
 import shutil
 
-SETTINGS_FILE = "settings.conf"
-LOG_FILE = "activity.log"
-SUM_SERVER_URL = "http://localhost:3000/sum"  # Adjust as needed
+# Use %APPDATA%\KeySecureApp for Windows, ~/.keysecureapp for others
+if os.name == "nt":
+    APP_DIR = os.path.join(os.environ["APPDATA"], "KeySecureApp")
+else:
+    APP_DIR = os.path.expanduser("~/.keysecureapp")
+SETTINGS_FILE = os.path.join(APP_DIR, "settings.conf")
+LOG_FILE = os.path.join(APP_DIR, "activity.log")
+SUM_SERVER_URL = "https://congenial-funicular-x54rwwvpwj5vfp5w9-3000.app.github.dev/"  # Adjust as needed
 
 # --- ENCRYPTION ---
 def encrypt_data(data, key):

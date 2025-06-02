@@ -44,10 +44,16 @@ function getReferenceSum() {
         if (computed) {
             sumValue = computed;
             fs.writeFileSync(SUM_JSON, JSON.stringify({ sum: sumValue }, null, 2));
+            console.log(`sum.json created with sum: ${sumValue}`);
+        } else {
+            console.log('app.py not found, sum.json not created.');
         }
     }
     return sumValue;
 }
+
+// Immediately check and create sum.json on server start
+getReferenceSum();
 
 app.post('/sum', (req, res) => {
     const numbers = req.body.numbers;

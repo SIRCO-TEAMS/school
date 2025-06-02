@@ -2,10 +2,179 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Owner Panel</title>
+    <title>Owner Panel - KeySecure</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f6fa; }
+        .container { max-width: 500px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0001; padding: 32px; }
+        h2 { color: #2E86C1; }
+        .hidden { display: none; }
+        label { display: block; margin-top: 16px; }
+        input[type="password"], input[type="text"] { width: 100%; padding: 8px; margin-top: 4px; }
+        button { margin-top: 20px; padding: 10px 24px; background: #2E86C1; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        button:disabled { background: #aaa; }
+        .settings-section { margin-top: 32px; }
+        .status { margin-top: 16px; color: #c00; }
+    </style>
 </head>
 <body>
-    <h1>Welcome to the Owner Panel</h1>
-    <p>Manage your app here.</p>
+<div class="container">
+    <h2>Owner Panel Login</h2>
+    <div id="login-form">
+        <label>Master Password:
+            <input type="password" id="password" autocomplete="current-password">
+        </label>
+        <label>Security Phrase:
+            <input type="text" id="phrase" autocomplete="off">
+        </label>
+        <button onclick="login()">Login</button>
+        <div class="status" id="login-status"></div>
+    </div>
+    <div id="panel" class="hidden">
+        <h2>KeySecure Owner Panel</h2>
+        <div>
+            <button onclick="showSettings()">Settings</button>
+            <button onclick="showLogs()">View Logs</button>
+            <button onclick="showUsers()">Manage Users</button>
+            <button onclick="showBackups()">Manage Backups</button>
+            <button onclick="downloadKey()">Download Auth Key</button>
+            <button onclick="showAVHelp()">AV Exclusion Help</button>
+            <button onclick="logout()">Logout</button>
+        </div>
+        <div class="settings-section hidden" id="settings-section">
+            <h3>Update Owner Credentials</h3>
+            <label>Current Password:
+                <input type="password" id="old-password">
+            </label>
+            <label>Current Security Phrase:
+                <input type="text" id="old-phrase">
+            </label>
+            <label>New Password:
+                <input type="password" id="new-password">
+            </label>
+            <label>New Security Phrase:
+                <input type="text" id="new-phrase">
+            </label>
+            <button onclick="updateSettings()">Update</button>
+            <button onclick="hideSettings()">Cancel</button>
+            <div class="status" id="settings-status"></div>
+        </div>
+        <div class="settings-section hidden" id="logs-section">
+            <h3>System Logs</h3>
+            <pre id="logs-content">[Logs loading... feature to be implemented]</pre>
+            <button onclick="hideLogs()">Close</button>
+        </div>
+        <div class="settings-section hidden" id="users-section">
+            <h3>Manage Users</h3>
+            <div>[User management feature to be implemented]</div>
+            <button onclick="hideUsers()">Close</button>
+        </div>
+        <div class="settings-section hidden" id="backups-section">
+            <h3>Manage Backups</h3>
+            <div>[Backup management feature to be implemented]</div>
+            <button onclick="hideBackups()">Close</button>
+        </div>
+        <div class="settings-section hidden" id="av-section">
+            <h3>Antivirus Exclusion Instructions</h3>
+            <div>
+                <p>Add the following folder to your antivirus/malware exclusions:</p>
+                <pre id="av-path"></pre>
+                <p>For Windows Defender, this is done automatically. For other AV, please add manually.</p>
+            </div>
+            <button onclick="hideAVHelp()">Close</button>
+        </div>
+    </div>
+</div>
+<script>
+const installPath = (navigator.platform.startsWith("Win"))
+    ? "%APPDATA%\\KeySecureApp"
+    : "~/.keysecureapp";
+function login() {
+    const password = document.getElementById('password').value;
+    const phrase = document.getElementById('phrase').value;
+    fetch('/owner/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password, phrase })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('panel').classList.remove('hidden');
+            document.getElementById('login-status').textContent = '';
+        } else {
+            document.getElementById('login-status').textContent = data.error || "Login failed";
+        }
+    });
+}
+function logout() {
+    document.getElementById('panel').classList.add('hidden');
+    document.getElementById('login-form').classList.remove('hidden');
+    document.getElementById('password').value = '';
+    document.getElementById('phrase').value = '';
+}
+function showSettings() {
+    document.getElementById('settings-section').classList.remove('hidden');
+}
+function hideSettings() {
+    document.getElementById('settings-section').classList.add('hidden');
+    document.getElementById('settings-status').textContent = '';
+}
+function updateSettings() {
+    const oldPassword = document.getElementById('old-password').value;
+    const oldPhrase = document.getElementById('old-phrase').value;
+    const newPassword = document.getElementById('new-password').value;
+    const newPhrase = document.getElementById('new-phrase').value;
+    fetch('/owner/api/update-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPassword, oldPhrase, newPassword, newPhrase })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('settings-status').textContent = "Updated successfully!";
+        } else {
+            document.getElementById('settings-status').textContent = data.error || "Update failed";
+        }
+    });
+}
+function showLogs() {
+    document.getElementById('logs-section').classList.remove('hidden');
+}
+function hideLogs() {
+    document.getElementById('logs-section').classList.add('hidden');
+}
+function showUsers() {
+    document.getElementById('users-section').classList.remove('hidden');
+}
+function hideUsers() {
+    document.getElementById('users-section').classList.add('hidden');
+}
+function showBackups() {
+    document.getElementById('backups-section').classList.remove('hidden');
+}
+function hideBackups() {
+    document.getElementById('backups-section').classList.add('hidden');
+}
+function downloadKey() {
+    fetch('/owner/api/auth-key')
+        .then(r => r.text())
+        .then(key => {
+            const blob = new Blob([key], {type: "text/plain"});
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "auth.key";
+            a.click();
+        });
+}
+function showAVHelp() {
+    document.getElementById('av-section').classList.remove('hidden');
+    document.getElementById('av-path').textContent = installPath;
+}
+function hideAVHelp() {
+    document.getElementById('av-section').classList.add('hidden');
+}
+</script>
 </body>
 </html>

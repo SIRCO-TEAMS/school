@@ -3,22 +3,75 @@ const path = require('path');
 const fs = require('fs');
 const https = require('https');
 const bodyParser = require('body-parser');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = 4000;
 
 // --- SECURITY CONFIG ---
-const KEY_FILE = path.join(__dirname, 'server.key'); // Provide your SSL key
-const CERT_FILE = path.join(__dirname, 'server.cert'); // Provide your SSL cert
-const AUTH_KEY = fs.existsSync(path.join(__dirname, 'auth.key'))
-    ? fs.readFileSync(path.join(__dirname, 'auth.key'), 'utf8').trim()
-    : null;
+const KEY_FILE = path.join(__dirname, 'server.key');
+const CERT_FILE = path.join(__dirname, 'server.cert');
+const AUTH_KEY_FILE = path.join(__dirname, 'auth.key');
+const CONFIG_FILE = path.join(__dirname, 'config.json');
+
+// Generate auth.key if missing
+if (!fs.existsSync(AUTH_KEY_FILE)) {
+    const key = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(AUTH_KEY_FILE, key);
+}
+const AUTH_KEY = fs.readFileSync(AUTH_KEY_FILE, 'utf8').trim();
+
+// Generate config.json if missing
+if (!fs.existsSync(CONFIG_FILE)) {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({
+        masterPassword: "admin",
+        securityPhrase: "secure"
+    }, null, 2));
+}
 
 // --- MIDDLEWARE ---
 app.use(bodyParser.json());
 
 // --- STATIC OWNER PANEL ---
 app.use('/owner', express.static(path.join(__dirname, 'html')));
+
+// --- API for owner panel authentication and settings ---
+function loadOwnerSettings() {
+    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+}
+function saveOwnerSettings(settings) {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(settings, null, 2));
+}
+
+// Endpoint to get the current auth key (for download)
+app.get('/owner/api/auth-key', (req, res) => {
+    res.type('text/plain').send(AUTH_KEY);
+});
+
+// Endpoint to authenticate owner panel
+app.post('/owner/api/login', (req, res) => {
+    const { password, phrase } = req.body;
+    const settings = loadOwnerSettings();
+    if (password === settings.masterPassword && phrase === settings.securityPhrase) {
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, error: "Invalid credentials" });
+    }
+});
+
+// Endpoint to update owner settings (password/phrase)
+app.post('/owner/api/update-settings', (req, res) => {
+    const { oldPassword, oldPhrase, newPassword, newPhrase } = req.body;
+    const settings = loadOwnerSettings();
+    if (oldPassword === settings.masterPassword && oldPhrase === settings.securityPhrase) {
+        settings.masterPassword = newPassword || settings.masterPassword;
+        settings.securityPhrase = newPhrase || settings.securityPhrase;
+        saveOwnerSettings(settings);
+        res.json({ success: true });
+    } else {
+        res.json({ success: false, error: "Invalid current credentials" });
+    }
+});
 
 // --- AUTHENTICATION MIDDLEWARE ---
 function requireKey(req, res, next) {
