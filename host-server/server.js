@@ -103,6 +103,41 @@ app.post('/storage/upload', requireKey, (req, res) => {
     res.json({ status: 'ok' });
 });
 
+// Track last heartbeat per user
+const lastHeartbeat = {};
+
+app.post('/heartbeat', requireKey, (req, res) => {
+    const { user } = req.body;
+    if (user) {
+        lastHeartbeat[user] = Date.now();
+        console.log(`Heartbeat received from ${user} at ${new Date().toISOString()}`);
+        res.json({ status: "ok" });
+    } else {
+        res.status(400).json({ error: "Missing user" });
+    }
+});
+
+// Endpoint for explicit shutdown notification
+app.post('/notify-shutdown', requireKey, (req, res) => {
+    const { user } = req.body;
+    if (user) {
+        console.log(`Shutdown notification from ${user} at ${new Date().toISOString()}`);
+        res.json({ status: "ok" });
+    } else {
+        res.status(400).json({ error: "Missing user" });
+    }
+});
+
+// Periodically check for missed heartbeats (every 2 minutes)
+setInterval(() => {
+    const now = Date.now();
+    Object.entries(lastHeartbeat).forEach(([user, ts]) => {
+        if (now - ts > 5 * 60 * 1000) { // 5 minutes
+            console.log(`WARNING: No heartbeat from ${user} for over 5 minutes!`);
+        }
+    });
+}, 2 * 60 * 1000);
+
 // --- HTTPS SERVER ---
 if (fs.existsSync(KEY_FILE) && fs.existsSync(CERT_FILE)) {
     https.createServer({

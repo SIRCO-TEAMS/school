@@ -8,6 +8,10 @@ from tkinter import filedialog, messagebox, simpledialog
 from Crypto.Cipher import AES
 import base64
 import shutil
+import threading
+import time
+import signal
+import socket
 
 # Use %APPDATA%\KeySecureApp for Windows, ~/.keysecureapp for others
 if os.name == "nt":
@@ -129,6 +133,67 @@ def secure_self_destruct():
         logging.error(f"Self-destruct error: {e}")
     sys.exit("App integrity check failed. Self-destructed.")
 
+# --- HEARTBEAT / SHUTDOWN NOTIFY ---
+def heartbeat(server_url, auth_key, interval=30):
+    missed = 0
+    while True:
+        try:
+            requests.post(
+                f"{server_url}/heartbeat",
+                json={"user": os.getlogin()},
+                headers={'x-auth-key': auth_key},
+                timeout=5,
+                verify=False
+            )
+            missed = 0
+        except Exception:
+            missed += 1
+            logging.warning(f"Heartbeat missed ({missed})")
+            if missed >= 10:
+                logging.error("App lost contact with server for extended period.")
+                break
+        time.sleep(interval)
+
+def notify_shutdown(server_url, auth_key):
+    try:
+        requests.post(
+            f"{server_url}/notify-shutdown",
+            json={"user": os.getlogin()},
+            headers={'x-auth-key': auth_key},
+            timeout=5,
+            verify=False
+        )
+    except Exception:
+        pass
+
+def on_exit(server_url, auth_key):
+    logging.info("App shutting down.")
+    notify_shutdown(server_url, auth_key)
+
+def setup_shutdown_hook(server_url, auth_key):
+    def handler(signum, frame):
+        on_exit(server_url, auth_key)
+        sys.exit(0)
+    signal.signal(signal.SIGTERM, handler)
+    signal.signal(signal.SIGINT, handler)
+    if os.name == "nt":
+        import win32api
+        win32api.SetConsoleCtrlHandler(lambda x: handler(None, None) or True, True)
+
+# --- SCREENSHOT/VIDEO BLOCK (LOG ONLY) ---
+def block_screen_capture():
+    # This is a placeholder: real prevention is OS-specific and not always possible in Python.
+    # Instead, log if a screenshot/video tool is detected running.
+    suspicious = ["snippingtool", "obs", "bandicam", "screenrec", "gyazo"]
+    try:
+        import psutil
+        for proc in psutil.process_iter(['name']):
+            name = proc.info['name'].lower()
+            if any(s in name for s in suspicious):
+                logging.warning(f"Screen capture tool detected: {name}")
+    except Exception:
+        pass
+
 # --- GUI ---
 class MonitoringGUI:
     def __init__(self, master, server_url, auth_key):
@@ -196,6 +261,9 @@ class MonitoringGUI:
         refresh_button.pack(pady=5)
         upload_button = tk.Button(owner_panel, text="Upload Logs", command=lambda: upload_log(self.server_url, self.auth_key))
         upload_button.pack(pady=5)
+        # Add a button to check for screen capture tools
+        check_btn = tk.Button(owner_panel, text="Check for Screen Capture Tools", command=block_screen_capture)
+        check_btn.pack(pady=5)
 
     def refresh_logs(self, log_listbox):
         log_listbox.delete(0, tk.END)
@@ -227,6 +295,9 @@ if __name__ == "__main__":
     server_url, key_path = load_settings()
     auth_key = load_auth_key(key_path)
     monitor_system()
+    setup_shutdown_hook(server_url, auth_key)
+    # Start heartbeat in background
+    threading.Thread(target=heartbeat, args=(server_url, auth_key), daemon=True).start()
     root = tk.Tk()
     app = MonitoringGUI(root, server_url, auth_key)
     root.mainloop()

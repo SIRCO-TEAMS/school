@@ -59,6 +59,8 @@ The executable will be located in the `dist` folder as `app.exe`.
 - **Password Protection:** Sensitive actions require admin credentials secured via hashing (SHA-256) or AES-256 encryption.
 - **Server Communication:** Logs and alerts are sent in real time to a secure remote server.
 - **Backup Management:** Local backups are automatically deleted upon an uninstall attempt—but the logs remain.
+- **Heartbeat & Shutdown Notification:**  
+  The app sends a heartbeat to the server every 30 seconds. If the server does not receive a heartbeat for 5 minutes, it logs a warning for the owner. When the app or PC is shut down, the app notifies the server (logged, not alerted).
 
 #### Example Python Code – Core Functions
 ```python
@@ -249,6 +251,12 @@ app.listen(3000, () => console.log("Server running on port 3000"));
 2. Generate a secure key file for client authentication.
 3. Allow only clients with the correct key file to connect.
 4. Gate administrative access with an owner panel that requires authenticated login.
+
+### Server Endpoints
+- `/notify`: Receives notifications from the app (e.g., uninstall requests).
+- `/heartbeat`: Receives periodic heartbeats from the app and tracks last contact per user.
+- `/notify-shutdown`: Receives shutdown notifications from the app and logs them.
+- The server logs a warning if a user misses heartbeats for over 5 minutes.
 
 ---
 
